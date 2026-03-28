@@ -1,10 +1,9 @@
 import { pipeline } from "./lib/transformersjs/transformers.min.js";
 
-const NUMBER_OF_ROUNDS = 1;
+const NUMBER_OF_ROUNDS = 100;
 
-const WORD_A = document.getElementById("word-a");
-const WORD_B = document.getElementById("word-b");
-const WORD_C = document.getElementById("word-c");
+const SENTENCE_A = document.getElementById("sentence-a");
+const SENTENCE_B = document.getElementById("sentence-b");
 
 const QUESTION_CONTAINER = document.getElementById("question-container");
 const QUESTION = document.getElementById("question");
@@ -21,7 +20,15 @@ const TEXT_EMBEDDING_MODEL = [
   { dtype: "q8" },
 ];
 
+/*const output = await generator('how can I become more healthy?', {
+  max_new_tokens: 100,
+});*/
+
 const ROUND_WORDS = [];
+
+const textGenerationWorker = new Worker("text-generation-worker.js", {
+  type: "module",
+});
 
 let _wordList;
 async function getWordList() {
@@ -66,17 +73,35 @@ async function getWordDistance(wordA, wordB) {
   );
 }
 
-async function fillWords() {
+async function fillSentences() {
   const wordList = await getWordList();
-  const indices = new Set();
-  while (indices.size < 3) {
-    indices.add(Math.round(Math.random() * (wordList.length - 1)));
+  const sentenceAWords = [];
+  const sentenceBWords = [];
+
+  for (let i = 0; i < 3; i++) {
+    sentenceAWords.push(wordList[Math.floor(Math.random() * wordList.length)]);
+    sentenceBWords.push(wordList[Math.floor(Math.random() * wordList.length)]);
   }
 
-  const indicesIterator = indices.values();
-  WORD_A.innerText = wordList[indicesIterator.next().value];
-  WORD_B.innerText = wordList[indicesIterator.next().value];
-  WORD_C.innerText = wordList[indicesIterator.next().value];
+  const prompt = "Write a short sentence using these words: ";
+  const sentenceAPrompt = prompt + sentenceAWords.join(", ");
+  const sentenceBPrompt = prompt + sentenceBWords.join(", ");
+  console.log(sentenceAPrompt);
+  console.log(sentenceBPrompt);
+
+  SENTENCE_A.innerText = "";
+  SENTENCE_B.innerText = "";
+  const SENTENCES = [SENTENCE_A, SENTENCE_B];
+
+  textGenerationWorker.onmessage = (e) => {
+    const { id, type, text } = e.data;
+    if (type === "token") {
+      SENTENCES[id].innerText += " " + text;
+    }
+  };
+
+  textGenerationWorker.postMessage({ id: 0, prompt: sentenceAPrompt });
+  textGenerationWorker.postMessage({ id: 1, prompt: sentenceBPrompt });
 }
 
 async function submitButtonPress() {
@@ -147,15 +172,15 @@ async function showResults() {
 
 async function startGame() {
   for (let roundId = 0; roundId < NUMBER_OF_ROUNDS; roundId++) {
-    await fillWords();
+    await fillSentences();
     await submitButtonPress();
-    ROUND_WORDS.push([
-      WORD_A.innerText,
-      WORD_B.innerText,
+    /*ROUND_WORDS.push([
+      SENTENCE_A.innerText,
+      SENTENCE_B.innerText,
       WORD_C.innerText,
       QUESTION_INPUT.value,
     ]);
-    QUESTION_INPUT.value = "";
+    QUESTION_INPUT.value = "";*/
   }
   showResults();
 }
