@@ -1,6 +1,6 @@
 import { pipeline } from "./lib/transformersjs/transformers.min.js";
 
-const NUMBER_OF_ROUNDS = 3;
+const NUMBER_OF_ROUNDS = 1;
 
 const WORD_A = document.getElementById("word-a");
 const WORD_B = document.getElementById("word-b");
@@ -12,6 +12,8 @@ const QUESTION_INPUT = document.getElementById("question-input");
 
 const RESULT_CONTAINER = document.getElementById("result-container");
 const RESULT_QUESTIONS = document.getElementById("result-questions");
+
+const RESTART_BUTTON = document.getElementById("restart-button");
 
 const TEXT_EMBEDDING_MODEL = [
   "feature-extraction",
@@ -143,7 +145,7 @@ async function showResults() {
   }
 }
 
-async function initialize() {
+async function startGame() {
   for (let roundId = 0; roundId < NUMBER_OF_ROUNDS; roundId++) {
     await fillWords();
     await submitButtonPress();
@@ -155,8 +157,16 @@ async function initialize() {
     ]);
     QUESTION_INPUT.value = "";
   }
-
   showResults();
 }
 
-setTimeout(initialize);
+RESTART_BUTTON.addEventListener("click", () => {
+  QUESTION_CONTAINER.style.display = "flex";
+  RESULT_CONTAINER.style.display = "none";
+
+  ROUND_WORDS.length = 0;
+  startGame();
+});
+
+setTimeout(startGame);
+setTimeout(getEmbeddingPipeline); // Preload the pipeline while playing.
